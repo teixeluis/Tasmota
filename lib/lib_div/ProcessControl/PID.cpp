@@ -28,7 +28,7 @@ PID::PID() {
 }
 
 void PID::initialise( double setpoint, double prop_band, double t_integral, double t_derivative,
-  double integral_default, int max_interval, double smooth_factor, unsigned char mode_auto, double manual_op ) {
+  double integral_default, int max_interval, double smooth_factor, unsigned char mode_auto, double manual_op, unsigned char positive_ctrl ) {
 
   m_setpoint = setpoint;
   m_prop_band = prop_band;
@@ -39,6 +39,7 @@ void PID::initialise( double setpoint, double prop_band, double t_integral, doub
   m_smooth_factor= smooth_factor;
   m_mode_auto= mode_auto;
   m_manual_op = manual_op;
+  m_positive_ctrl = positive_ctrl;
 
   m_initialised = 1;
 
@@ -116,10 +117,11 @@ double PID::tick( unsigned long nowSecs ) {
       }
 
       double proportional = m_pv - m_setpoint;
+
       if (m_prop_band == 0) {
         // prop band is zero so drop back to on/off control with zero hysteresis
         if (proportional > 0.0) {
-          power = 0.0;
+          power = -1.0;
         } else if (proportional < 0.0) {
           power = 1.0;
         } else {
@@ -140,12 +142,21 @@ double PID::tick( unsigned long nowSecs ) {
     // not yet initialised or no pv value yet so set power to disabled value
     power = m_manual_op;
   }
-  if (power < 0.0) {
-    power = 0.0;
+
+  // clamp the process output to 0-100% power (saturation) and take into account if we are :
+
+  if (power < 0) {
+    power = 1;
   } else if (power > 1.0) {
-    power = 1.0;
+    power = 0;
   }
+
+  if(!m_positive_ctrl) {
+    power = 1.0 - power;
+  }
+
   m_last_power = power;
+  
   return power;
 }
 
@@ -192,6 +203,10 @@ void PID::setMaxInterval( int max_interval ) {
   m_max_interval = max_interval;
 }
 
+void PID::setPositiveCtrl(unsigned char positive_ctrl) {
+  m_positive_ctrl = positive_ctrl;
+}
+
 
 double PID::getPv() {
   return(m_pv);
@@ -231,4 +246,8 @@ double PID::getManualPower() {
 
 int PID::getMaxInterval() {
   return(m_max_interval);
+}
+
+unsigned char PID::getPositiveCtrl() {
+  return(m_positive_ctrl);
 }

@@ -45,7 +45,7 @@ public:
       current time in seconds
   */
   void initialise( double setpoint, double prop_band, double t_integral, double t_derivative,
-    double integral_default, int max_interval, double smooth_factor, unsigned char mode_auto, double manual_op );
+    double integral_default, int max_interval, double smooth_factor, unsigned char mode_auto, double manual_op, unsigned char positive_ctrl );
 
 
   /* called regularly to calculate and return new power value */
@@ -57,6 +57,7 @@ public:
   // methods to modify configuration data
   void setSp( double setpoint );
   void setPb( double prop_band );
+  void setKp( double k_proportional );
   void setTi( double t_integral );
   void setTd( double t_derivative );
   void setInitialInt( double integral_default );
@@ -64,6 +65,7 @@ public:
   void setAuto( unsigned char mode_auto );
   void setManualPower( double manual_op );
   void setMaxInterval( int max_interval );
+  void setPositiveCtrl(unsigned char positive_ctrl);
 
   double getPv();
   double getSp();
@@ -75,6 +77,7 @@ public:
   unsigned char getAuto();
   double getManualPower();
   int getMaxInterval();
+  unsigned char getPositiveCtrl();
 
 private:
   double m_pv;
@@ -87,6 +90,7 @@ private:
   unsigned char m_mode_auto;
   double m_manual_op;
   int m_max_interval;
+  unsigned char m_positive_ctrl;
   double m_last_power;
 
 

@@ -100,6 +100,10 @@
                                                  // heating application.
                                                  // May be adjusted via MQTT using cmnd PidUpdateSecs
 
+   #define PID_POSITIVE_CTRL             1       // Indicates what influence power has on the system process value. For example
+                                                 // applying power to a heater causes the temperature to rise, whereas
+                                                 // applying power to a cooler or a pH reducer pump, causes the process value to drop.
+
    #define PID_USE_TIMPROP               1       // To use an internal relay for a time proportioned output to drive the
                                                  // process, set this to indicate which timeprop output to use. For a device
                                                  // with just one relay then this will be 1.
@@ -164,6 +168,9 @@
 #ifndef PID_UPDATE_SECS
 #define PID_UPDATE_SECS               0       // [PidUpdateSecs] How often to run the pid algorithm
 #endif
+#ifndef PID_POSITIVE_CTRL
+#define PID_POSITIVE_CTRL             1       // [PidPositiveCtrl] Positive/negative effect on process value
+#endif
 
 #ifndef PID_USE_TIMPROP
 #define PID_USE_TIMPROP               1       // To disable this feature define as false in user_config_override
@@ -197,6 +204,7 @@
 #define D_CMND_PID_SETMANUAL_POWER "ManualPower"
 #define D_CMND_PID_SETMAX_INTERVAL "MaxInterval"
 #define D_CMND_PID_SETUPDATE_SECS "UpdateSecs"
+#define D_CMND_PID_SETPOSITIVE_CTRL "PositiveCtrl"
 #define D_CMND_PID_SETSHUTDOWN "Shutdown"
 
 const char kPIDCommands[] PROGMEM = D_PRFX_PID "|" // Prefix
@@ -211,6 +219,7 @@ const char kPIDCommands[] PROGMEM = D_PRFX_PID "|" // Prefix
   D_CMND_PID_SETMANUAL_POWER "|"
   D_CMND_PID_SETMAX_INTERVAL "|"
   D_CMND_PID_SETUPDATE_SECS "|"
+  D_CMND_PID_SETPOSITIVE_CTRL "|"
   D_CMND_PID_SETSHUTDOWN;
   ;
 
@@ -226,6 +235,7 @@ void (* const PIDCommand[])(void) PROGMEM = {
   &CmndSetManualPower,
   &CmndSetMaxInterval,
   &CmndSetUpdateSecs,
+  &CmndSetPositiveCtrl,
   &CmndSetShutdown
   };
 
@@ -242,7 +252,7 @@ struct {
 void PIDInit()
 {
   Pid.pid.initialise( PID_SETPOINT, PID_PROPBAND, PID_INTEGRAL_TIME, PID_DERIVATIVE_TIME, PID_INITIAL_INT,
-    PID_MAX_INTERVAL, PID_DERIV_SMOOTH_FACTOR, PID_AUTO, PID_MANUAL_POWER );
+    PID_MAX_INTERVAL, PID_DERIV_SMOOTH_FACTOR, PID_AUTO, PID_MANUAL_POWER, PID_POSITIVE_CTRL );
 }
 
 void PIDEverySecond() {
@@ -389,6 +399,14 @@ void CmndSetUpdateSecs(void) {
   ResponseCmndNumber(Pid.update_secs);
 }
 
+
+void CmndSetPositiveCtrl(void) {
+  if (XdrvMailbox.payload >= 0) {
+    Pid.pid.setPositiveCtrl(XdrvMailbox.payload);
+  }
+  ResponseCmndNumber(Pid.pid.getPositiveCtrl());
+}
+
 void CmndSetShutdown(void) {
   if (XdrvMailbox.payload >= 0) {
     AddLog(LOG_LEVEL_INFO, PSTR("PID: Shutdown mode %s"), XdrvMailbox.payload>0 ? "activated" : "cleared");
@@ -442,6 +460,8 @@ void PIDShowValues(void) {
   i_buf = Pid.current_time_secs - Pid.last_pv_update_secs;
   ResponseAppend_P(PSTR("\"PidInterval\":%d,"), i_buf);
   ResponseAppend_P(PSTR("\"PidUpdateSecs\":%d,"), Pid.update_secs);
+  chr_buf = Pid.pid.getPositiveCtrl();
+  ResponseAppend_P(PSTR("\"PidPositiveCtrl\":%d,"), chr_buf);
 #endif // PID_REPORT_MORE_SETTINGS
 
   i_buf = (Pid.current_time_secs - Pid.last_pv_update_secs) > Pid.pid.getMaxInterval();
